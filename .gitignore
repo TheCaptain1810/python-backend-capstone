@@ -11,6 +11,8 @@ config.py
 dist
 dist-ssr
 *.local
+/venv
+/__pycache__
 
 # Editor directories and files
 .vscode/*
