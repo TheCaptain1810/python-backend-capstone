@@ -8,11 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 config.py
+__pycache__
+venv
 dist
 dist-ssr
 *.local
-venv
-__pycache__
 
 # Editor directories and files
 .vscode/*
