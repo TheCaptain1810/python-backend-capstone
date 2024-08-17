@@ -12,8 +12,9 @@ import config
 app = Flask(__name__)
 CORS(app)
 
-MUSIC_PATH = "D:\\Music\\can-you-hear-the-music.mp3"
+MUSIC_PATH = r"D:\\Music\\can-you-hear-the-music.mp3"
 COMMANDS_FILE = 'commands.json'
+APP_COMMANDS_FILE = 'app_commands.json'
 CHAT_RESET_CMD = "reset chat"
 SHUTDOWN_CMD = "shutdown"
 PLAY_MUSIC_CMD = "play music"
@@ -41,22 +42,24 @@ SITES = {
 
 chatStr = ""
 
-def load_commands():
+def load_commands(file):
     try:
-        with open(COMMANDS_FILE, 'r') as f:
+        with open(file, 'r') as f:
             return json.load(f).get('commands', {})
     except FileNotFoundError:
         return {}
 
-def save_commands(commands):
-    with open(COMMANDS_FILE, 'w') as f:
+def save_commands(commands, file):
+    with open(file, 'w') as f:
         json.dump({'commands': commands}, f, indent=4)
 
-commands = load_commands()
+# Load both command files
+commands = load_commands(COMMANDS_FILE)
+app_commands = load_commands(APP_COMMANDS_FILE)
 
 @app.route('/command', methods=['POST'])
 def handle_command():
-    global chatStr, commands
+    global chatStr, commands, app_commands
     data = request.json
     queries = data.get('command', '').lower()
 
@@ -71,21 +74,25 @@ def handle_command():
         open_application("music")
         response_text = "Playing music."
     elif queries == VS_CODE:
-        open_application("C:\\Users\\hp\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe")
+        open_application(r"C:\\Users\\hp\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe")
         response_text = "Opening VS Code."
     elif TIME_CMD in queries:
         current_time = datetime.datetime.now().strftime("%H:%M")
         response_text = f"Sir, the time is {current_time}"
     elif queries == FACETIME_CMD:
-        open_application("facetime")
         response_text = "Opening FaceTime."
+        open_application("facetime")
     elif queries == PASS_CMD:
-        open_application("pass")
         response_text = "Opening Pass."
+        open_application("pass")
     elif any(f"open {site}" in queries for site in SITES):
         site_name = queries.split("open ")[1].strip()
-        open_site(site_name)
         response_text = f"Opening {site_name}."
+        open_site(site_name)
+    elif "learn app" in queries:
+        response_text = learn_app_command(queries)
+    elif queries in app_commands:
+        response_text = execute_custom_app_command(queries)
     elif "learn" in queries:
         response_text = learn_command(queries)
     elif queries in commands:
@@ -101,14 +108,36 @@ def learn_command(queries):
     try:
         _, cmd, _, action = queries.split("'")
         commands[cmd.strip()] = action.strip()
-        save_commands(commands)
+        save_commands(commands, COMMANDS_FILE)
         return f"Learned command '{cmd.strip()}' to execute '{action.strip()}'"
     except ValueError:
         return "Please use the format: learn 'command' as 'action'"
 
+def learn_app_command(queries):
+    try:
+        _, cmd, _, app_path = queries.split("'")
+        # Validate the path
+        if not os.path.isfile(app_path.strip()):
+            return f"Invalid path: '{app_path.strip()}'. Please provide a valid file path."
+        app_commands[cmd.strip()] = app_path.strip()
+        save_commands(app_commands, APP_COMMANDS_FILE)
+        return f"Learned app command '{cmd.strip()}' to open '{app_path.strip()}'"
+    except ValueError:
+        return "Please use the format: learn app 'command' as 'app_path'"
+
 def execute_custom_command(command):
-    os.system(commands[command])
-    return f"Executing {command}"
+    if command in commands:
+        os.system(commands[command])
+        return f"Executing {command}"
+    else:
+        return f"Command '{command}' not found."
+
+def execute_custom_app_command(command):
+    if command in app_commands:
+        open_application(app_commands[command])
+        return f"Opening application '{command}'"
+    else:
+        return f"Application command '{command}' not found."
 
 def generate_response(queries):
     try:
@@ -161,7 +190,6 @@ def open_mac_application(app_name):
 
 def open_site(site_name):
     if site_name in SITES:
-        say(f"Opening {site_name}, sir...")
         webbrowser.open(SITES[site_name])
 
 if __name__ == '__main__':

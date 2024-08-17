@@ -24,6 +24,7 @@ dist-ssr
 *.sw?
 
 # Environments
+pyvenv.cfg
 .env
 .venv
 env/
