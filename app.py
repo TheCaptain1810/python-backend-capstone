@@ -53,7 +53,6 @@ def save_commands(commands, file):
     with open(file, 'w') as f:
         json.dump({'commands': commands}, f, indent=4)
 
-# Load both command files
 commands = load_commands(COMMANDS_FILE)
 app_commands = load_commands(APP_COMMANDS_FILE)
 
@@ -70,6 +69,7 @@ def handle_command():
         response_text = "Chat history reset."
     elif queries == SHUTDOWN_CMD:
         response_text = "Goodbye, sir."
+        # Optional: Implement system shutdown if needed
     elif queries == PLAY_MUSIC_CMD:
         open_application("music")
         response_text = "Playing music."
@@ -116,7 +116,6 @@ def learn_command(queries):
 def learn_app_command(queries):
     try:
         _, cmd, _, app_path = queries.split("'")
-        # Validate the path
         if not os.path.isfile(app_path.strip()):
             return f"Invalid path: '{app_path.strip()}'. Please provide a valid file path."
         app_commands[cmd.strip()] = app_path.strip()
@@ -161,9 +160,12 @@ def generate_response(queries):
         return f"Some error occurred: {e}"
 
 def say(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
+    try:
+        engine = pyttsx3.init()
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        print(f"Error in text-to-speech: {e}")
 
 def open_application(app_name):
     os_name = platform.system()
