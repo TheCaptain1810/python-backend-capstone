@@ -89,54 +89,12 @@ def handle_command():
         site_name = queries.split("open ")[1].strip()
         response_text = f"Opening {site_name}."
         open_site(site_name)
-    elif "learn app" in queries:
-        response_text = learn_app_command(queries)
-    elif queries in app_commands:
-        response_text = execute_custom_app_command(queries)
-    elif "learn" in queries:
-        response_text = learn_command(queries)
-    elif queries in commands:
-        response_text = execute_custom_command(queries)
     else:
         response_text = generate_response(queries)
 
     say(response_text)
     chatStr += f"{response_text}\n"
     return jsonify({"response": response_text})
-
-def learn_command(queries):
-    try:
-        _, cmd, _, action = queries.split("'")
-        commands[cmd.strip()] = action.strip()
-        save_commands(commands, COMMANDS_FILE)
-        return f"Learned command '{cmd.strip()}' to execute '{action.strip()}'"
-    except ValueError:
-        return "Please use the format: learn 'command' as 'action'"
-
-def learn_app_command(queries):
-    try:
-        _, cmd, _, app_path = queries.split("'")
-        if not os.path.isfile(app_path.strip()):
-            return f"Invalid path: '{app_path.strip()}'. Please provide a valid file path."
-        app_commands[cmd.strip()] = app_path.strip()
-        save_commands(app_commands, APP_COMMANDS_FILE)
-        return f"Learned app command '{cmd.strip()}' to open '{app_path.strip()}'"
-    except ValueError:
-        return "Please use the format: learn app 'command' as 'app_path'"
-
-def execute_custom_command(command):
-    if command in commands:
-        os.system(commands[command])
-        return f"Executing {command}"
-    else:
-        return f"Command '{command}' not found."
-
-def execute_custom_app_command(command):
-    if command in app_commands:
-        open_application(app_commands[command])
-        return f"Opening application '{command}'"
-    else:
-        return f"Application command '{command}' not found."
 
 def generate_response(queries):
     try:
