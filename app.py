@@ -6,6 +6,8 @@ import pyttsx3
 import json
 import datetime
 import webbrowser
+import shutil
+import subprocess
 from groq import Groq
 import config
 
@@ -18,7 +20,6 @@ APP_COMMANDS_FILE = 'app_commands.json'
 CHAT_RESET_CMD = "reset chat"
 SHUTDOWN_CMD = "shutdown"
 PLAY_MUSIC_CMD = "play music"
-TIME_CMD = "the time"
 FACETIME_CMD = "open facetime"
 PASS_CMD = "open pass"
 VS_CODE = "open vs code"
@@ -32,7 +33,7 @@ SITES = {
     "instagram": "https://www.instagram.com",
     "linkedin": "https://www.linkedin.com",
     "reddit": "https://www.reddit.com",
-    "github": "https://www.github.com",
+    "github website": "https://www.github.com",
     "amazon": "https://www.amazon.com",
     "netflix": "https://www.netflix.com",
     "spotify": "https://www.spotify.com",
@@ -76,7 +77,7 @@ def handle_command():
     elif queries == VS_CODE:
         open_application(r"C:\\Users\\hp\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe")
         response_text = "Opening VS Code."
-    elif TIME_CMD in queries:
+    elif "the time" in queries:
         current_time = datetime.datetime.now().strftime("%H:%M")
         response_text = f"Sir, the time is {current_time}"
     elif queries == FACETIME_CMD:
@@ -89,6 +90,10 @@ def handle_command():
         site_name = queries.split("open ")[1].strip()
         response_text = f"Opening {site_name}."
         open_site(site_name)
+    elif queries.startswith("open "):
+        app_name = queries[5:].strip()  # Extract the application name
+        result = open_application(app_name)
+        response_text = result if isinstance(result, str) else f"Opening {app_name}."
     else:
         response_text = generate_response(queries)
 
@@ -127,26 +132,20 @@ def say(text):
 
 def open_application(app_name):
     os_name = platform.system()
-    if os.path.isfile(app_name):
-        os.startfile(app_name)
-    else:
-        try:
-            if os_name == "Darwin":  # macOS
-                open_mac_application(app_name)
-            elif os_name == "Windows":
-                os.system(f"start {app_name}")
-            elif os_name == "Linux":
-                os.system(f"xdg-open {app_name}")
-        except Exception as e:
-            print(f"Error opening {app_name}: {e}")
-
-def open_mac_application(app_name):
-    if app_name == "facetime":
-        os.system("open /System/Applications/FaceTime.app")
-    elif app_name == "pass":
-        os.system("open /Applications/Passky.app")
-    elif app_name == "music":
-        os.system(f"open {MUSIC_PATH}")
+    try:
+        if os_name == "Darwin":  # macOS
+            subprocess.Popen(["open", "-a", app_name])
+        elif os_name == "Windows":
+            app_path = shutil.which(app_name)
+            if app_path:
+                os.startfile(app_path)
+            else:
+                return f"{app_name} not found in system PATH."
+        elif os_name == "Linux":
+            subprocess.Popen([app_name])
+        return f"Opened {app_name}."
+    except Exception as e:
+        return f"Error opening {app_name}: {e}"
 
 def open_site(site_name):
     if site_name in SITES:
