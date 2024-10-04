@@ -2,62 +2,18 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import platform
-import pyttsx3
-import json
 import datetime
 import webbrowser
 import shutil
 import subprocess
 from groq import Groq
 import config
+import paths
 
 app = Flask(__name__)
 CORS(app)
 
-MUSIC_PATH = r"D:\\Music\\can-you-hear-the-music.mp3"
-COMMANDS_FILE = 'commands.json'
-APP_COMMANDS_FILE = 'app_commands.json'
-CHAT_RESET_CMD = "reset chat"
-SHUTDOWN_CMD = "shutdown"
-PLAY_MUSIC_CMD = "play music"
-FACETIME_CMD = "open facetime"
-PASS_CMD = "open pass"
-VS_CODE = "open vs code"
-CLOSE_VS_CODE = "close vs code"
-CLOSE_MUSIC = "close music"
-
-SITES = {
-    "youtube": "https://www.youtube.com",
-    "wikipedia": "https://www.wikipedia.com",
-    "google": "https://www.google.com",
-    "facebook": "https://www.facebook.com",
-    "twitter": "https://www.twitter.com",
-    "instagram": "https://www.instagram.com",
-    "linkedin": "https://www.linkedin.com",
-    "reddit": "https://www.reddit.com",
-    "github website": "https://www.github.com",
-    "amazon": "https://www.amazon.com",
-    "netflix": "https://www.netflix.com",
-    "spotify": "https://www.spotify.com",
-    "news": "https://www.cnn.com",
-    "email": "https://www.gmail.com"
-}
-
 chatStr = ""
-
-def load_commands(file):
-    try:
-        with open(file, 'r') as f:
-            return json.load(f).get('commands', {})
-    except FileNotFoundError:
-        return {}
-
-def save_commands(commands, file):
-    with open(file, 'w') as f:
-        json.dump({'commands': commands}, f, indent=4)
-
-commands = load_commands(COMMANDS_FILE)
-app_commands = load_commands(APP_COMMANDS_FILE)
 
 @app.route('/command', methods=['POST'])
 def handle_command():
@@ -67,43 +23,26 @@ def handle_command():
 
     chatStr += f"Captain: {queries}\nJarvis: "
 
-    if queries == CHAT_RESET_CMD:
-        chatStr = ""
-        response_text = "Chat history reset."
-    elif queries == SHUTDOWN_CMD:
+    if queries == "shutdown":
         response_text = "Goodbye, sir."
-    elif queries == PLAY_MUSIC_CMD:
-        open_application("music")
-        response_text = "Playing music."
-    elif queries == CLOSE_MUSIC:
-        close_application("music")
-        response_text = "Closing music."
-    elif queries == VS_CODE:
-        open_application(r"C:\\Users\\hp\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe")
-        response_text = "Opening VS Code."
-    elif queries == CLOSE_VS_CODE:
-        close_application("Code.exe")
-        response_text = "Closing VS Code."
     elif "the time" in queries:
         current_time = datetime.datetime.now().strftime("%H:%M")
         response_text = f"Sir, the time is {current_time}"
-    elif queries == FACETIME_CMD:
-        response_text = "Opening FaceTime."
-        open_application("facetime")
-    elif queries == PASS_CMD:
-        response_text = "Opening Pass."
-        open_application("pass")
-    elif any(f"open {site}" in queries for site in SITES):
+    elif any(f"open {site}" in queries for site in paths.sites):
         site_name = queries.split("open ")[1].strip()
         response_text = f"Opening {site_name}."
         open_site(site_name)
-    elif any(f"close {site}" in queries for site in SITES):
+    elif any(f"close {site}" in queries for site in paths.sites):
         site_name = queries.split("close ")[1].strip()
         response_text = close_site(site_name)
     elif queries.startswith("open "):
-        app_name = queries[5:].strip()
-        result = open_application(app_name)
-        response_text = result if isinstance(result, str) else f"Opening {app_name}."
+        app_name = queries[5:].strip().lower()
+        if app_name in paths.applications:
+            result = open_application(paths.applications[app_name])
+            response_text = f"Opening {app_name}"
+        else:
+            result = open_application(app_name)
+            response_text = result if isinstance(result, str) else f"Opening {app_name}."
     elif queries.startswith("close "):
         app_name = queries[6:].strip()
         result = close_application(app_name)
@@ -135,14 +74,6 @@ def generate_response(queries):
     except Exception as e:
         return f"Some error occurred: {e}"
 
-def say(text):
-    try:
-        engine = pyttsx3.init()
-        engine.say(text)
-        engine.runAndWait()
-    except Exception as e:
-        print(f"Error in text-to-speech: {e}")
-
 def open_application(app_name):
     os_name = platform.system()
     try:
@@ -161,8 +92,8 @@ def open_application(app_name):
         return f"Error opening {app_name}: {e}"
 
 def open_site(site_name):
-    if site_name in SITES:
-        webbrowser.open(SITES[site_name])
+    if site_name in paths.sites:
+        webbrowser.open(paths.sites[site_name])
 
 def close_application(app_name):
     os_name = platform.system()
@@ -180,9 +111,9 @@ def close_application(app_name):
         return f"Error closing {app_name}: {e}"
 
 def close_site(site_name):
-    if site_name in SITES:
+    if site_name in paths.sites:
         os_name = platform.system()
-        url = SITES[site_name]
+        url = paths.sites[site_name]
         try:
             if os_name == "Darwin":  # macOS
                 apple_script = f'''
