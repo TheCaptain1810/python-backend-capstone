@@ -9,15 +9,24 @@ import subprocess
 from groq import Groq
 import config
 import paths
+from collections import deque
+from pymongo import MongoClient
+from bson import ObjectId
 
 app = Flask(__name__)
 CORS(app)
 
+# MongoDB setup
+client = MongoClient(config.mongodb_uri)
+db = client['assistant_db']
+conversations_collection = db['conversations']
+
 chatStr = ""
+conversation_history = deque(maxlen=10)  # Stores last 10 exchanges
 
 @app.route('/command', methods=['POST'])
 def handle_command():
-    global chatStr, commands, app_commands
+    global chatStr, commands, app_commands, conversation_history
     data = request.json
     queries = data.get('command', '').lower()
 
@@ -47,8 +56,19 @@ def handle_command():
         app_name = queries[6:].strip()
         result = close_application(app_name)
         response_text = result
+    elif queries == "clear memory":
+        conversation_history.clear()
+        response_text = "Memory cleared. I've forgotten our previous conversation."
     else:
         response_text = generate_response(queries)
+
+    # Store the conversation in MongoDB
+    conversation_entry = {
+        'user_input': queries,
+        'assistant_response': response_text,
+        'timestamp': datetime.datetime.utcnow()
+    }
+    conversations_collection.insert_one(conversation_entry)
 
     chatStr += f"{response_text}\n"
     return jsonify({"response": response_text})
@@ -56,11 +76,14 @@ def handle_command():
 def generate_response(queries):
     try:
         client = Groq(api_key=config.groq_apikey)
+        
+        # Prepare the conversation history for the API call
+        messages = list(conversation_history)
+        messages.append({"role": "user", "content": queries})
+        
         completion = client.chat.completions.create(
             model="llama3-8b-8192",
-            messages=[
-                {"role": "user", "content": queries}
-            ],
+            messages=messages,
             temperature=1,
             max_tokens=1024,
             top_p=1,
@@ -70,6 +93,11 @@ def generate_response(queries):
         response_text = ""
         for chunk in completion:
             response_text += chunk.choices[0].delta.content or ""
+        
+        # Update conversation history
+        conversation_history.append({"role": "user", "content": queries})
+        conversation_history.append({"role": "assistant", "content": response_text.strip()})
+        
         return response_text.strip()
     except Exception as e:
         return f"Some error occurred: {e}"
@@ -150,6 +178,21 @@ def close_site(site_name):
             return f"Error closing tabs for {site_name}: {e}"
     else:
         return f"{site_name} is not in the list of known sites."
+
+@app.route('/conversations', methods=['GET'])
+def get_conversations():
+    conversations = list(conversations_collection.find().sort('timestamp', -1).limit(10))
+    for conv in conversations:
+        conv['_id'] = str(conv['_id'])  # Convert ObjectId to string for JSON serialization
+    return jsonify(conversations)
+
+@app.route('/conversation/<id>', methods=['GET'])
+def get_conversation(id):
+    conversation = conversations_collection.find_one({'_id': ObjectId(id)})
+    if conversation:
+        conversation['_id'] = str(conversation['_id'])
+        return jsonify(conversation)
+    return jsonify({"error": "Conversation not found"}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
