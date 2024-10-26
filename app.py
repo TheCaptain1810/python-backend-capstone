@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-# from flask_cors import CORS
+from flask_cors import CORS
 import os
 import platform
 import datetime
@@ -14,7 +14,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 
 app = Flask(__name__)
-# CORS(app)
+CORS(app)
 
 # MongoDB setup
 client = MongoClient(config.mongodb_uri)
