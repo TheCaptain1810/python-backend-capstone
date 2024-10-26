@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+from dotenv import load_dotenv
 import platform
 import datetime
 import webbrowser
@@ -16,8 +17,11 @@ from bson import ObjectId
 app = Flask(__name__)
 CORS(app)
 
+load_dotenv()
+groq_apikey = os.getenv('groq_apikey')
+mongodb_uri = os.getenv('mongodb_uri')
 # MongoDB setup
-client = MongoClient(config.mongodb_uri)
+client = MongoClient(mongodb_uri)
 db = client['assistant_db']
 conversations_collection = db['conversations']
 
@@ -75,7 +79,7 @@ def handle_command():
 
 def generate_response(queries):
     try:
-        client = Groq(api_key=config.groq_apikey)
+        client = Groq(api_key=groq_apikey)
         
         # Prepare the conversation history for the API call
         messages = list(conversation_history)
