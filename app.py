@@ -194,5 +194,5 @@ def get_conversation(id):
         return jsonify(conversation)
     return jsonify({"error": "Conversation not found"}), 404
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
