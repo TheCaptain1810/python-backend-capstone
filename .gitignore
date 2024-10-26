@@ -7,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-config.py
+# config.py
 dist
 dist-ssr
 *.local
