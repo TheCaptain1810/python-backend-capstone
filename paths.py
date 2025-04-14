@@ -73,4 +73,5 @@ sites = {
     "notion": "https://www.notion.so",
     "canva": "https://www.canva.com",
     "figma": "https://www.figma.com",
+    "geeks for geeks": "https://www.geeksforgeeks.org/"
 }
